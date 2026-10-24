@@ -130,7 +130,49 @@ export type Category = {
   description?: string | null
   active: boolean
 }
+export type CashReport = {
+  start_date: string;
+  end_date: string;
 
+  summary: {
+    sales: number;
+    income: number;
+    expenses: number;
+    net: number;
+    sales_count: number;
+    income_movements: number;
+    expense_movements: number;
+  };
+
+  payment_methods: {
+    cash: number;
+    yape: number;
+    plin: number;
+    card: number;
+    transfer: number;
+    other: number;
+  };
+
+  daily: {
+    date: string;
+    sales: number;
+    income: number;
+    expenses: number;
+    net: number;
+  }[];
+
+  movements: {
+    id: number;
+    date: string;
+    type: string;
+    concept: string;
+    amount: number;
+    payment_method: string;
+    sale_id?: number | null;
+    receivable_payment_id?: number | null;
+    notes?: string | null;
+  }[];
+};
 // ===============================
 // PETICIONES HTTP
 // ===============================
@@ -196,6 +238,16 @@ async function request<T>(
 
 export const api = {
   
+  // ===============================
+// REPORTES
+// ===============================
+
+cashReport: (startDate: string, endDate: string) =>
+  request<CashReport>(
+    `/api/reports/cash?start_date=${encodeURIComponent(
+      startDate,
+    )}&end_date=${encodeURIComponent(endDate)}`
+  ),
   
 updateDebt: (
   id: number,

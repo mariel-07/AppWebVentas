@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-
+import Reports from './pages/Reports'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import Payments from './pages/Payments'
@@ -32,7 +32,10 @@ export default function App() {
         path="/mantenimientos/caja"
         element={<Cash />}
       />
-
+<Route
+  path="/reportes"
+  element={<Reports />}
+/>
       <Route
         path="*"
         element={

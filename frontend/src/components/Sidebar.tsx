@@ -6,6 +6,7 @@ import {
   Package,
   Wallet,
   Banknote,
+  FileText,
   Menu,
   X,
   ShoppingBag,
@@ -16,6 +17,7 @@ const navigation = [
   { to: '/mantenimientos/productos', label: 'Productos', icon: Package },
   { to: '/mantenimientos/pagos', label: 'Deudas / Cuentas por cobrar', icon: Wallet },
   { to: '/mantenimientos/caja', label: 'Caja / Arqueo', icon: Banknote },
+  { to: '/reportes', label: 'Reportes', icon: FileText },
 ]
 
 export default function Sidebar() {
@@ -45,7 +47,9 @@ export default function Sidebar() {
           </div>
 
           <div>
-            <b>HEG<span>ORAS</span></b>
+            <b>
+              HEG<span>ORAS</span>
+            </b>
             <small>INTERNET</small>
           </div>
 
@@ -60,10 +64,12 @@ export default function Sidebar() {
 
         <div className="workspace">
           <div className="workspace-logo">N</div>
+
           <div>
             <b>Internet Hegoras</b>
             <small>Panel de negocio</small>
           </div>
+
           <span className="online-dot" />
         </div>
 
@@ -89,16 +95,22 @@ export default function Sidebar() {
         <div className="sidebar-bottom">
           <div className="help-card">
             <div className="help-icon">✦</div>
+
             <b>¿Necesitas ayuda?</b>
-            <p>Revisa tus movimientos y mantén tu negocio al día.</p>
+
+            <p>
+              Revisa tus movimientos y mantén tu negocio al día.
+            </p>
           </div>
 
           <div className="user-mini">
             <div className="avatar">DR</div>
+
             <div>
               <b>Dulce Ramos</b>
               <small>Administradora</small>
             </div>
+
             <span className="user-menu">•••</span>
           </div>
         </div>

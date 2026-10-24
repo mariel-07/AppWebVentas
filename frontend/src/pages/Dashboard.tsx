@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
@@ -240,7 +239,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="kpi-grid">
+      <div className="kpi-grid three">
         <Kpi
           label="Productos registrados"
           value={String(products.length)}
