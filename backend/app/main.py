@@ -1,5 +1,5 @@
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -933,4 +933,216 @@ def dashboard(db: Session = Depends(get_db)):
         "pending": float(pending),
         "paid_today": float(paid_today),
         "sales_today": float(sales_today),
+    }
+
+# =====================================================
+# REPORTES
+# =====================================================
+
+@app.get("/api/reports/cash")
+def cash_report(
+    start_date: date,
+    end_date: date,
+    db: Session = Depends(get_db),
+):
+    
+
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha final no puede ser menor que la fecha inicial.",
+        )
+
+    # -------------------------------------------------
+    # Rango completo de fechas
+    # -------------------------------------------------
+
+    start_datetime = datetime(
+        start_date.year,
+        start_date.month,
+        start_date.day,
+        tzinfo=timezone.utc,
+    )
+
+    end_datetime = datetime(
+        end_date.year,
+        end_date.month,
+        end_date.day,
+        tzinfo=timezone.utc,
+    ) + timedelta(days=1)
+
+    # -------------------------------------------------
+    # VENTAS
+    # -------------------------------------------------
+
+    sales = db.scalars(
+        select(Sale)
+        .where(
+            Sale.sale_date >= start_datetime,
+            Sale.sale_date < end_datetime,
+            Sale.status != "anulada",
+        )
+        .order_by(Sale.sale_date.desc())
+    ).all()
+
+    # -------------------------------------------------
+    # MOVIMIENTOS DE CAJA
+    # -------------------------------------------------
+
+    movements = db.scalars(
+        select(CashMovement)
+        .where(
+            CashMovement.movement_date >= start_datetime,
+            CashMovement.movement_date < end_datetime,
+        )
+        .order_by(CashMovement.movement_date.desc())
+    ).all()
+
+    # -------------------------------------------------
+    # TOTALES
+    # -------------------------------------------------
+
+    total_sales = Decimal("0.00")
+    total_income = Decimal("0.00")
+    total_expenses = Decimal("0.00")
+
+    cash = Decimal("0.00")
+    yape = Decimal("0.00")
+    plin = Decimal("0.00")
+    card = Decimal("0.00")
+    transfer = Decimal("0.00")
+    other = Decimal("0.00")
+
+    income_movements = 0
+    expense_movements = 0
+
+    for sale in sales:
+        total_sales += money(sale.total)
+
+    for movement in movements:
+        amount = money(movement.amount)
+
+        if movement.movement_type.lower() == "ingreso":
+            total_income += amount
+            income_movements += 1
+
+            method = normalize_cash_payment_method(
+                movement.payment_method
+            )
+
+            if method == "efectivo":
+                cash += amount
+            elif method == "yape":
+                yape += amount
+            elif method == "plin":
+                plin += amount
+            elif method == "tarjeta":
+                card += amount
+            elif method == "transferencia":
+                transfer += amount
+            else:
+                other += amount
+
+        elif movement.movement_type.lower() == "egreso":
+            total_expenses += amount
+            expense_movements += 1
+
+    net = money(total_income - total_expenses)
+
+    # -------------------------------------------------
+    # RESUMEN POR DÍA
+    # -------------------------------------------------
+
+    daily = {}
+
+    current_date = start_date
+
+    while current_date <= end_date:
+        key = current_date.isoformat()
+
+        daily[key] = {
+            "date": key,
+            "sales": Decimal("0.00"),
+            "income": Decimal("0.00"),
+            "expenses": Decimal("0.00"),
+            "net": Decimal("0.00"),
+        }
+
+        current_date += timedelta(days=1)
+
+    for sale in sales:
+        sale_date = sale.sale_date.date().isoformat()
+
+        if sale_date in daily:
+            daily[sale_date]["sales"] += money(sale.total)
+
+    for movement in movements:
+        movement_date = movement.movement_date.date().isoformat()
+
+        if movement_date not in daily:
+            continue
+
+        amount = money(movement.amount)
+
+        if movement.movement_type.lower() == "ingreso":
+            daily[movement_date]["income"] += amount
+
+        elif movement.movement_type.lower() == "egreso":
+            daily[movement_date]["expenses"] += amount
+
+    for item in daily.values():
+        item["sales"] = float(money(item["sales"]))
+        item["income"] = float(money(item["income"]))
+        item["expenses"] = float(money(item["expenses"]))
+        item["net"] = float(
+            money(item["income"] - item["expenses"])
+        )
+
+    # -------------------------------------------------
+    # MOVIMIENTOS DETALLADOS
+    # -------------------------------------------------
+
+    movement_rows = []
+
+    for movement in movements:
+        movement_rows.append(
+            {
+                "id": movement.id,
+                "date": movement.movement_date,
+                "type": movement.movement_type,
+                "concept": movement.concept,
+                "amount": float(money(movement.amount)),
+                "payment_method": movement.payment_method,
+                "sale_id": movement.sale_id,
+                "receivable_payment_id": movement.receivable_payment_id,
+                "notes": movement.notes,
+            }
+        )
+
+    return {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+
+        "summary": {
+            "sales": float(money(total_sales)),
+            "income": float(money(total_income)),
+            "expenses": float(money(total_expenses)),
+            "net": float(net),
+            "sales_count": len(sales),
+            "income_movements": income_movements,
+            "expense_movements": expense_movements,
+        },
+
+        "payment_methods": {
+            "cash": float(money(cash)),
+            "yape": float(money(yape)),
+            "plin": float(money(plin)),
+            "card": float(money(card)),
+            "transfer": float(money(transfer)),
+            "other": float(money(other)),
+        },
+
+        "daily": list(daily.values()),
+
+        "movements": movement_rows,
     }
